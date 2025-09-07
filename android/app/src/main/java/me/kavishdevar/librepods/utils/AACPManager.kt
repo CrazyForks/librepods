@@ -25,6 +25,8 @@ import me.kavishdevar.librepods.utils.AACPManager.Companion.ControlCommandIdenti
 import me.kavishdevar.librepods.utils.AACPManager.Companion.StemPressBudType.entries
 import me.kavishdevar.librepods.utils.AACPManager.Companion.StemPressType.entries
 import kotlin.io.encoding.ExperimentalEncodingApi
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 /**
  * Manager class for Apple Accessory Communication Protocol (AACP)
@@ -36,18 +38,19 @@ class AACPManager {
         private const val TAG = "AACPManager"
 
         object Opcodes {
-            const val SET_FEATURE_FLAGS: Byte = 0x4d
-            const val REQUEST_NOTIFICATIONS: Byte = 0x0f
+            const val SET_FEATURE_FLAGS: Byte = 0x4D
+            const val REQUEST_NOTIFICATIONS: Byte = 0x0F
             const val BATTERY_INFO: Byte = 0x04
             const val CONTROL_COMMAND: Byte = 0x09
             const val EAR_DETECTION: Byte = 0x06
-            const val CONVERSATION_AWARENESS: Byte = 0x4b
-            const val DEVICE_METADATA: Byte = 0x1d
+            const val CONVERSATION_AWARENESS: Byte = 0x4B
+            const val DEVICE_METADATA: Byte = 0x1D
             const val RENAME: Byte = 0x1E
             const val HEADTRACKING: Byte = 0x17
             const val PROXIMITY_KEYS_REQ: Byte = 0x30
             const val PROXIMITY_KEYS_RSP: Byte = 0x31
             const val STEM_PRESS: Byte = 0x19
+            const val EQ_SETTINGS: Byte = 0x35
         }
 
         private val HEADER_BYTES = byteArrayOf(0x04, 0x00, 0x04, 0x00)
@@ -550,5 +553,43 @@ class AACPManager {
             Log.e(TAG, "Error sending packet: ${e.message}")
             return false
         }
+    }
+
+    fun sendEQPacket(eqFloats: FloatArray, phone: Boolean, media: Boolean): Boolean {
+        val buffer = ByteBuffer.allocate(140).order(ByteOrder.LITTLE_ENDIAN)
+        buffer.put(0x04)
+        buffer.put(0x00)
+        buffer.put(0x04)
+        buffer.put(0x00)
+        buffer.put(0x53)
+        buffer.put(0x00)
+        buffer.put(0x84.toByte())
+        buffer.put(0x00)
+        buffer.put(0x02)
+        buffer.put(0x02)
+        buffer.put(if (phone) 0x01 else 0x00)
+        buffer.put(if (media) 0x01 else 0x00)
+        for (i in 0..7) {
+            buffer.putFloat(eqFloats[i])
+        }
+        while (buffer.hasRemaining()) {
+            buffer.put(0x00)
+        }
+        val packet = buffer.array()
+        return sendPacket(packet)
+    }
+
+    fun sendPhoneMediaEQ(eq: FloatArray, phone: Byte = 0x02.toByte(), media: Byte = 0x02.toByte()) {
+        if (eq.size != 8) throw IllegalArgumentException("EQ must be 8 floats")
+        val header = byteArrayOf(0x04.toByte(), 0x00.toByte(), 0x04.toByte(), 0x00.toByte(), 0x53.toByte(), 0x00.toByte(), 0x84.toByte(), 0x00.toByte(), 0x02.toByte(), 0x02.toByte(), phone, media)
+        val buffer = ByteBuffer.allocate(128).order(ByteOrder.LITTLE_ENDIAN)
+        for (block in 0..3) {
+            for (i in 0..7) {
+                buffer.putFloat(eq[i])
+            }
+        }
+        val payload = buffer.array()
+        val packet = header + payload
+        sendPacket(packet)
     }
 }

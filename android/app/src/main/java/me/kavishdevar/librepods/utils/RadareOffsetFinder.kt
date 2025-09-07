@@ -45,6 +45,7 @@ class RadareOffsetFinder(context: Context) {
         private const val CFG_REQ_OFFSET_PROP = "persist.librepods.cfg_req_offset"
         private const val CSM_CONFIG_OFFSET_PROP = "persist.librepods.csm_config_offset"
         private const val PEER_INFO_REQ_OFFSET_PROP = "persist.librepods.peer_info_req_offset"
+        private const val SDP_OFFSET_PROP = "persist.librepods.sdp_offset"
         private const val EXTRACT_DIR = "/"
 
         private const val RADARE2_BIN_PATH = "$EXTRACT_DIR/data/local/tmp/aln_unzip/org.radare.radare2installer/radare2/bin"
@@ -77,7 +78,8 @@ class RadareOffsetFinder(context: Context) {
                     "setprop $HOOK_OFFSET_PROP '' && " +
                     "setprop $CFG_REQ_OFFSET_PROP '' && " +
                     "setprop $CSM_CONFIG_OFFSET_PROP '' && " +
-                    "setprop $PEER_INFO_REQ_OFFSET_PROP ''"
+                    "setprop $PEER_INFO_REQ_OFFSET_PROP ''" +
+                    "setprop $SDP_OFFSET_PROP ''"
                 ))
                 val exitCode = process.waitFor()
 
@@ -422,6 +424,7 @@ class RadareOffsetFinder(context: Context) {
 //            findAndSaveL2cuProcessCfgReqOffset(libraryPath, envSetup)
 //            findAndSaveL2cCsmConfigOffset(libraryPath, envSetup)
 //            findAndSaveL2cuSendPeerInfoReqOffset(libraryPath, envSetup)
+            findAndSaveSdpOffset(libraryPath, envSetup)
 
         } catch (e: Exception) {
             Log.e(TAG, "Failed to find function offset", e)
@@ -569,6 +572,51 @@ class RadareOffsetFinder(context: Context) {
             }
         } catch (e: Exception) {
             Log.e(TAG, "Failed to find or save l2cu_send_peer_info_req offset", e)
+        }
+    }
+
+    private suspend fun findAndSaveSdpOffset(libraryPath: String, envSetup: String) = withContext(Dispatchers.IO) {
+        try {
+            val command = "$envSetup && $RADARE2_BIN_PATH/rabin2 -q -E $libraryPath | grep DmSetLocalDiRecord"
+            Log.d(TAG, "Running command: $command")
+
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
+            val reader = BufferedReader(InputStreamReader(process.inputStream))
+            val errorReader = BufferedReader(InputStreamReader(process.errorStream))
+
+            var line: String?
+            var offset = 0L
+
+            while (reader.readLine().also { line = it } != null) {
+                Log.d(TAG, "rabin2 output: $line")
+                if (line?.contains("DmSetLocalDiRecord") == true) {
+                    val parts = line.split(" ")
+                    if (parts.isNotEmpty() && parts[0].startsWith("0x")) {
+                        offset = parts[0].substring(2).toLong(16)
+                        Log.d(TAG, "Found DmSetLocalDiRecord offset at ${parts[0]}")
+                        break
+                    }
+                }
+            }
+
+            while (errorReader.readLine().also { line = it } != null) {
+                Log.d(TAG, "rabin2 error: $line")
+            }
+
+            val exitCode = process.waitFor()
+            if (exitCode != 0) {
+                Log.e(TAG, "rabin2 command failed with exit code $exitCode")
+            }
+
+            if (offset > 0L) {
+                val hexString = "0x${offset.toString(16)}"
+                Runtime.getRuntime().exec(arrayOf(
+                    "su", "-c", "setprop $SDP_OFFSET_PROP $hexString"
+                )).waitFor()
+                Log.d(TAG, "Saved DmSetLocalDiRecord offset: $hexString")
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to find or save DmSetLocalDiRecord offset", e)
         }
     }
 
