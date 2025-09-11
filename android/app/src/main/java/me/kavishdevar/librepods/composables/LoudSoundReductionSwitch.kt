@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,32 +44,30 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.delay
 import me.kavishdevar.librepods.R
-import me.kavishdevar.librepods.services.ServiceManager
-import me.kavishdevar.librepods.utils.AACPManager
+import me.kavishdevar.librepods.utils.ATTManager
 import kotlin.io.encoding.ExperimentalEncodingApi
 
 @Composable
-fun ConversationalAwarenessSwitch() {
-    val service = ServiceManager.getService()!!
-    val conversationEnabledValue = service.aacpManager.controlCommandStatusList.find {
-        it.identifier == AACPManager.Companion.ControlCommandIdentifiers.CONVERSATION_DETECT_CONFIG
-    }?.value?.takeIf { it.isNotEmpty() }?.get(0)
-    var conversationalAwarenessEnabled by remember {
+fun LoudSoundReductionSwitch(attManager: ATTManager) {
+    var loudSoundReductionEnabled by remember {
         mutableStateOf(
-            conversationEnabledValue == 1.toByte()
+            false
         )
     }
+    LaunchedEffect(Unit) {
+        while (attManager.socket?.isConnected != true) {
+            delay(100)
+        }
+        attManager.read(0x1b)
+    }
 
-    fun updateConversationalAwareness(enabled: Boolean) {
-        conversationalAwarenessEnabled = enabled
-        service.aacpManager.sendControlCommand(
-            AACPManager.Companion.ControlCommandIdentifiers.CONVERSATION_DETECT_CONFIG.value,
-            enabled
-        )
+    LaunchedEffect(loudSoundReductionEnabled) {
+        if (attManager.socket?.isConnected != true) return@LaunchedEffect
+        attManager.write(0x1b, if (loudSoundReductionEnabled) byteArrayOf(1) else byteArrayOf(0))
     }
 
     val isDarkTheme = isSystemInDarkTheme()
@@ -97,7 +96,7 @@ fun ConversationalAwarenessSwitch() {
                 indication = null,
                 interactionSource = remember { MutableInteractionSource() }
             ) {
-                updateConversationalAwareness(!conversationalAwarenessEnabled)
+                loudSoundReductionEnabled = !loudSoundReductionEnabled
             },
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -107,29 +106,23 @@ fun ConversationalAwarenessSwitch() {
                 .padding(end = 4.dp)
         ) {
             Text(
-                text = "Conversational Awareness",
+                text = stringResource(R.string.loud_sound_reduction),
                 fontSize = 16.sp,
                 color = textColor
             )
             Spacer(modifier = Modifier.height(4.dp))
             Text(
-                text = stringResource(R.string.conversational_awareness_description),
+                text = stringResource(R.string.loud_sound_reduction_description),
                 fontSize = 12.sp,
                 color = textColor.copy(0.6f),
                 lineHeight = 14.sp,
             )
         }
         StyledSwitch(
-            checked = conversationalAwarenessEnabled,
+            checked = loudSoundReductionEnabled,
             onCheckedChange = {
-                updateConversationalAwareness(it)
+                loudSoundReductionEnabled = it
             },
         )
     }
-}
-
-@Preview
-@Composable
-fun ConversationalAwarenessSwitchPreview() {
-    ConversationalAwarenessSwitch()
 }

@@ -77,7 +77,7 @@ fun ToneVolumeSlider() {
 
     Row(
         modifier = Modifier
-            .fillMaxWidth(),
+            .fillMaxWidth(0.95f),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically
     ) {

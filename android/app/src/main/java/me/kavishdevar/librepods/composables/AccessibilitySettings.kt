@@ -154,9 +154,6 @@ fun AccessibilitySettings() {
             },
             textColor = textColor
         )
-
-        SinglePodANCSwitch()
-        VolumeControlSwitch()
     }
 }
 

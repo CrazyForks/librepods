@@ -1,4 +1,4 @@
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools">
     <string name="app_name" translatable="false">LibrePods</string>
     <string name="app_description" translatable="false">Liberate your AirPods from Apple\'s ecosystem.</string>
     <string name="title_activity_custom_device" translatable="false">GATT Testing</string>
@@ -82,4 +82,7 @@
     <string name="takeover_media_start">Starting media playback</string>
     <string name="takeover_media_start_desc">Your phone starts playing media</string>
     <string name="undo">Undo</string>
+    <string name="customize_transparency_mode_description">You can customize Transparency mode for your AirPods Pro to help you hear what\'s around you.</string>
+    <string name="loud_sound_reduction_description">AirPods Pro automatically reduce your exposure to loud environmental noises when in Transparency and Adaptive mode.</string>
+    <string name="loud_sound_reduction">Loud Sound Reduction</string>
 </resources>

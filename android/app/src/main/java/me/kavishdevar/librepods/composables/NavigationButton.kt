@@ -50,7 +50,7 @@ import androidx.navigation.NavController
 
 
 @Composable
-fun NavigationButton(to: String, name: String, navController: NavController) {
+fun NavigationButton(to: String, name: String, navController: NavController, onClick: (() -> Unit)? = null) {
     val isDarkTheme = isSystemInDarkTheme()
     var backgroundColor by remember { mutableStateOf(if (isDarkTheme) Color(0xFF1C1C1E) else Color(0xFFFFFFFF)) }
     val animatedBackgroundColor by animateColorAsState(targetValue = backgroundColor, animationSpec = tween(durationMillis = 500))
@@ -67,7 +67,7 @@ fun NavigationButton(to: String, name: String, navController: NavController) {
                         backgroundColor = if (isDarkTheme) Color(0xFF1C1C1E) else Color(0xFFFFFFFF)
                     },
                     onTap = {
-                        navController.navigate(to)
+                        if (onClick != null) onClick() else navController.navigate(to)
                     }
                 )
             }
@@ -79,7 +79,7 @@ fun NavigationButton(to: String, name: String, navController: NavController) {
         )
         Spacer(modifier = Modifier.weight(1f))
         IconButton(
-            onClick = { navController.navigate(to) },
+            onClick = { if (onClick != null) onClick() else navController.navigate(to) },
             colors = IconButtonDefaults.iconButtonColors(
                 containerColor = Color.Transparent,
                 contentColor = if (isDarkTheme) Color.White else Color.Black

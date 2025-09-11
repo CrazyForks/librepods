@@ -1107,6 +1107,19 @@ class AACPManager {
         return devices
     }
 
+    fun sendSomePacketIDontKnowWhatItIs() {
+        // 2900 00ff ffff ffff ffff
+        sendDataPacket(
+            byteArrayOf(
+                0x29, 0x00,
+                0x00, 0xFF.toByte(),
+                0xFF.toByte(), 0xFF.toByte(),
+                0xFF.toByte(), 0xFF.toByte(),
+                0xFF.toByte(), 0xFF.toByte(),
+            )
+        )
+    }
+
     fun disconnected() {
         Log.d(TAG, "Disconnected, clearing state")
         controlCommandStatusList.clear()

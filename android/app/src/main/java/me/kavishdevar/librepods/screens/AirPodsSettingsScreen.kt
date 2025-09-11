@@ -91,6 +91,7 @@ import dev.chrisbanes.haze.materials.CupertinoMaterials
 import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import kotlinx.coroutines.launch
 import me.kavishdevar.librepods.R
+import me.kavishdevar.librepods.CustomDevice
 import me.kavishdevar.librepods.composables.AccessibilitySettings
 import me.kavishdevar.librepods.composables.AudioSettings
 import me.kavishdevar.librepods.composables.BatteryView
@@ -401,7 +402,10 @@ fun AirPodsSettingsScreen(dev: BluetoothDevice?, service: AirPodsService,
                 // Only show debug when not in BLE-only mode
                 if (!bleOnlyMode) {
                     Spacer(modifier = Modifier.height(16.dp))
-                    AccessibilitySettings()
+                    NavigationButton(to = "", "Accessibility", navController = navController, onClick = {
+                        val intent = Intent(context, CustomDevice::class.java)
+                        context.startActivity(intent)
+                    })
 
                     Spacer(modifier = Modifier.height(16.dp))
                     NavigationButton("debug", "Debug", navController)

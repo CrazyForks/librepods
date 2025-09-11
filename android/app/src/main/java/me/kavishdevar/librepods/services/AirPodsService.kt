@@ -2318,6 +2318,8 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
                         delay(200)
                         aacpManager.sendNotificationRequest()
                         delay(200)
+                        aacpManager.sendSomePacketIDontKnowWhatItIs()
+                        delay(200)
                         aacpManager.sendRequestProximityKeys((AACPManager.Companion.ProximityKeyType.IRK.value+AACPManager.Companion.ProximityKeyType.ENC_KEY.value).toByte())
                         if (!handleIncomingCallOnceConnected) startHeadTracking() else handleIncomingCall()
                         Handler(Looper.getMainLooper()).postDelayed({
