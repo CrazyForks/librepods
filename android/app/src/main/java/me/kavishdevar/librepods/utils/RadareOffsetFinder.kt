@@ -78,7 +78,7 @@ class RadareOffsetFinder(context: Context) {
                     "setprop $HOOK_OFFSET_PROP '' && " +
                     "setprop $CFG_REQ_OFFSET_PROP '' && " +
                     "setprop $CSM_CONFIG_OFFSET_PROP '' && " +
-                    "setprop $PEER_INFO_REQ_OFFSET_PROP ''" +
+                    "setprop $PEER_INFO_REQ_OFFSET_PROP '' &&" +
                     "setprop $SDP_OFFSET_PROP ''"
                 ))
                 val exitCode = process.waitFor()
@@ -92,6 +92,44 @@ class RadareOffsetFinder(context: Context) {
             } catch (e: Exception) {
                 Log.e(TAG, "Error clearing hook offset properties", e)
             }
+            return false
+        }
+
+        fun clearSdpOffset(): Boolean {
+            try {
+                val process = Runtime.getRuntime().exec(arrayOf(
+                    "su", "-c", "setprop $SDP_OFFSET_PROP ''"
+                ))
+                val exitCode = process.waitFor()
+
+                if (exitCode == 0) {
+                    Log.d(TAG, "Successfully cleared SDP offset property")
+                    return true
+                } else {
+                    Log.e(TAG, "Failed to clear SDP offset property, exit code: $exitCode")
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error clearing SDP offset property", e)
+            }
+            return false
+        }
+
+        fun isSdpOffsetAvailable(): Boolean {
+            try {
+                val process = Runtime.getRuntime().exec(arrayOf("getprop", SDP_OFFSET_PROP))
+                val reader = BufferedReader(InputStreamReader(process.inputStream))
+                val propValue = reader.readLine()
+                process.waitFor()
+
+                if (propValue != null && propValue.isNotEmpty()) {
+                    Log.d(TAG, "SDP offset property exists: $propValue")
+                    return true
+                }
+            } catch (e: Exception) {
+                Log.e(TAG, "Error checking if SDP offset property exists", e)
+            }
+
+            Log.d(TAG, "No SDP offset available")
             return false
         }
     }
@@ -659,6 +697,59 @@ class RadareOffsetFinder(context: Context) {
             Log.d(TAG, "Cleaned up extracted files at $EXTRACT_DIR/data/local/tmp/aln_unzip")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to cleanup extracted files", e)
+        }
+    }
+
+    suspend fun findSdpOffset(): Boolean = withContext(Dispatchers.IO) {
+        try {
+            _progressState.value = ProgressState.Downloading
+            if (!downloadRadare2TarballIfNeeded()) {
+                _progressState.value = ProgressState.Error("Failed to download radare2 tarball")
+                Log.e(TAG, "Failed to download radare2 tarball")
+                return@withContext false
+            }
+
+            _progressState.value = ProgressState.Extracting
+            if (!extractRadare2Tarball()) {
+                _progressState.value = ProgressState.Error("Failed to extract radare2 tarball")
+                Log.e(TAG, "Failed to extract radare2 tarball")
+                return@withContext false
+            }
+
+            _progressState.value = ProgressState.MakingExecutable
+            if (!makeExecutable()) {
+                _progressState.value = ProgressState.Error("Failed to make binaries executable")
+                Log.e(TAG, "Failed to make binaries executable")
+                return@withContext false
+            }
+
+            _progressState.value = ProgressState.FindingOffset
+            val libraryPath = findBluetoothLibraryPath()
+            if (libraryPath == null) {
+                _progressState.value = ProgressState.Error("Failed to find Bluetooth library")
+                Log.e(TAG, "Failed to find Bluetooth library")
+                return@withContext false
+            }
+
+            @Suppress("LocalVariableName") val currentLD_LIBRARY_PATH = ProcessBuilder().command("su", "-c", "printenv LD_LIBRARY_PATH").start().inputStream.bufferedReader().readText().trim()
+            val currentPATH = ProcessBuilder().command("su", "-c", "printenv PATH").start().inputStream.bufferedReader().readText().trim()
+            val envSetup = """
+                export LD_LIBRARY_PATH="$RADARE2_LIB_PATH:$currentLD_LIBRARY_PATH"
+                export PATH="$BUSYBOX_PATH:$RADARE2_BIN_PATH:$currentPATH"
+            """.trimIndent()
+
+            findAndSaveSdpOffset(libraryPath, envSetup)
+
+            _progressState.value = ProgressState.Cleaning
+            cleanupExtractedFiles()
+
+            _progressState.value = ProgressState.Success(0L)
+            return@withContext true
+
+        } catch (e: Exception) {
+            _progressState.value = ProgressState.Error("Error: ${e.message}")
+            Log.e(TAG, "Error in findSdpOffset", e)
+            return@withContext false
         }
     }
 }

@@ -20,6 +20,7 @@ package me.kavishdevar.librepods.screens
 
 import android.content.Context
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -99,6 +100,9 @@ import me.kavishdevar.librepods.utils.RadareOffsetFinder
 import kotlin.io.encoding.Base64
 import kotlin.io.encoding.ExperimentalEncodingApi
 import kotlin.math.roundToInt
+import androidx.compose.runtime.rememberCoroutineScope
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalHazeMaterialsApi::class, ExperimentalEncodingApi::class)
 @Composable
@@ -107,6 +111,7 @@ fun AppSettingsScreen(navController: NavController) {
     val name = remember { mutableStateOf(sharedPreferences.getString("name", "") ?: "") }
     val isDarkTheme = isSystemInDarkTheme()
     val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val scrollState = rememberScrollState()
     val scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior()
     val hazeState = remember { HazeState() }
@@ -200,6 +205,11 @@ fun AppSettingsScreen(navController: NavController) {
         return hexPattern.matches(input)
     }
 
+    var isProcessingSdp by remember { mutableStateOf(false) }
+    var actAsAppleDevice by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = isProcessingSdp) {}
+
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -233,8 +243,11 @@ fun AppSettingsScreen(navController: NavController) {
                 navigationIcon = {
                     TextButton(
                         onClick = {
-                            navController.popBackStack()
+                            if (!isProcessingSdp) {
+                                navController.popBackStack()
+                            }
                         },
+                        enabled = !isProcessingSdp,
                         shape = RoundedCornerShape(8.dp),
                         modifier = Modifier.width(180.dp)
                     ) {
@@ -1188,6 +1201,91 @@ fun AppSettingsScreen(navController: NavController) {
                             lineHeight = 16.sp,
                         )
                     }
+                }
+
+                LaunchedEffect(Unit) {
+                    actAsAppleDevice = RadareOffsetFinder.isSdpOffsetAvailable()
+                }
+
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            enabled = !isProcessingSdp,
+                            indication = null,
+                            interactionSource = remember { MutableInteractionSource() }
+                        ) {
+                            if (!isProcessingSdp) {
+                                val newValue = !actAsAppleDevice
+                                actAsAppleDevice = newValue
+                                isProcessingSdp = true
+                                coroutineScope.launch {
+                                    if (newValue) {
+                                        val radareOffsetFinder = RadareOffsetFinder(context)
+                                        val success = radareOffsetFinder.findSdpOffset() ?: false
+                                        if (success) {
+                                            Toast.makeText(context, "Found offset please restart the Bluetooth process", Toast.LENGTH_LONG).show()
+                                        }
+                                    } else {
+                                        RadareOffsetFinder.clearSdpOffset()
+                                    }
+                                    isProcessingSdp = false
+                                }
+                            }
+                        },
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(vertical = 8.dp)
+                            .padding(end = 4.dp)
+                    ) {
+                        Text(
+                            text = "Act as an Apple device",
+                            fontSize = 16.sp,
+                            color = textColor
+                        )
+                        Spacer(modifier = Modifier.height(4.dp))
+                        Text(
+                            text = "Enables multi-device connectivity and Accessibility features like customizing transparency mode (amplification, tone, ambient noise reduction, conversation boost, and EQ)",
+                            fontSize = 14.sp,
+                            color = textColor.copy(0.6f),
+                            lineHeight = 16.sp,
+                        )
+                        if (actAsAppleDevice) {
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = "Might be unstable!! A maximum of two devices can be connected to your AirPods. If you are using with an Apple device like an iPad or Mac, then please connect that device first and then your Android.",
+                                fontSize = 12.sp,
+                                color = MaterialTheme.colorScheme.error,
+                                lineHeight = 14.sp,
+                            )
+                        }
+                    }
+
+                    StyledSwitch(
+                        checked = actAsAppleDevice,
+                        onCheckedChange = {
+                            if (!isProcessingSdp) {
+                                actAsAppleDevice = it
+                                isProcessingSdp = true
+                                coroutineScope.launch {
+                                    if (it) {
+                                        val radareOffsetFinder = RadareOffsetFinder(context)
+                                        val success = radareOffsetFinder.findSdpOffset() ?: false
+                                        if (success) {
+                                            Toast.makeText(context, "Found offset please restart the Bluetooth process", Toast.LENGTH_LONG).show()
+                                        }
+                                    } else {
+                                        RadareOffsetFinder.clearSdpOffset()
+                                    }
+                                    isProcessingSdp = false
+                                }
+                            }
+                        },
+                        enabled = !isProcessingSdp
+                    )
                 }
             }
 
