@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,6 +52,7 @@ import me.kavishdevar.librepods.services.AirPodsService
 import me.kavishdevar.librepods.utils.AACPManager
 import kotlin.io.encoding.ExperimentalEncodingApi
 import androidx.core.content.edit
+import android.util.Log
 
 @Composable
 fun IndependentToggle(name: String, service: AirPodsService? = null, functionName: String? = null, sharedPreferences: SharedPreferences, default: Boolean = false, controlCommandIdentifier: AACPManager.Companion.ControlCommandIdentifiers? = null) {
@@ -85,6 +87,27 @@ fun IndependentToggle(name: String, service: AirPodsService? = null, functionNam
 
     LaunchedEffect(sharedPreferences) {
         checked = sharedPreferences.getBoolean(snakeCasedName, true)
+    }
+
+    if (controlCommandIdentifier != null) {
+        val listener = remember {
+            object : AACPManager.ControlCommandListener {
+                override fun onControlCommandReceived(controlCommand: AACPManager.ControlCommand) {
+                    if (controlCommand.identifier == controlCommandIdentifier.value) {
+                        Log.d("IndependentToggle", "Received control command for $name: ${controlCommand.value}")
+                        checked = controlCommand.value.takeIf { it.isNotEmpty() }?.get(0) == 1.toByte()
+                    }
+                }
+            }
+        }
+        LaunchedEffect(Unit) {
+            service?.aacpManager?.registerControlCommandListener(controlCommandIdentifier, listener)
+        }
+        DisposableEffect(Unit) {
+            onDispose {
+                service?.aacpManager?.unregisterControlCommandListener(controlCommandIdentifier, listener)
+            }
+        }
     }
     Box (
         modifier = Modifier

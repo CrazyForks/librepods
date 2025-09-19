@@ -23,6 +23,7 @@ import android.util.Log
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Arrangement
@@ -42,6 +43,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Scaffold
@@ -67,6 +70,7 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
@@ -93,6 +97,7 @@ import me.kavishdevar.librepods.composables.ToneVolumeSlider
 import me.kavishdevar.librepods.composables.VolumeControlSwitch
 import me.kavishdevar.librepods.services.ServiceManager
 import me.kavishdevar.librepods.utils.ATTManager
+import me.kavishdevar.librepods.utils.AACPManager
 import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -224,6 +229,98 @@ fun AccessibilitySettingsScreen() {
                 )
             }
 
+            val transparencyListener = remember {
+                object : (ByteArray) -> Unit {
+                    override fun invoke(value: ByteArray) {
+                        val parsed = parseTransparencySettingsResponse(value)
+                        if (parsed != null) {
+                            enabled.value = parsed.enabled
+                            amplificationSliderValue.floatValue = parsed.netAmplification
+                            balanceSliderValue.floatValue = parsed.balance
+                            toneSliderValue.floatValue = parsed.leftTone
+                            ambientNoiseReductionSliderValue.floatValue = parsed.leftAmbientNoiseReduction
+                            conversationBoostEnabled.value = parsed.leftConversationBoost
+                            eq.value = parsed.leftEQ.copyOf()
+                            Log.d(TAG, "Updated transparency settings from notification")
+                        } else {
+                            Log.w(TAG, "Failed to parse transparency settings from notification")
+                        }
+                    }
+                }
+            }
+
+            val pressSpeedOptions = mapOf(
+                0.toByte() to "Default",
+                1.toByte() to "Slower",
+                2.toByte() to "Slowest"
+            )
+            val selectedPressSpeedValue = aacpManager?.controlCommandStatusList?.find { it.identifier == AACPManager.Companion.ControlCommandIdentifiers.DOUBLE_CLICK_INTERVAL }?.value?.takeIf { it.isNotEmpty() }?.get(0)
+            var selectedPressSpeed by remember { mutableStateOf(pressSpeedOptions[selectedPressSpeedValue] ?: pressSpeedOptions[0]) }
+            val selectedPressSpeedListener = object : AACPManager.ControlCommandListener {
+                    override fun onControlCommandReceived(controlCommand: AACPManager.ControlCommand) {
+                        if (controlCommand.identifier == AACPManager.Companion.ControlCommandIdentifiers.DOUBLE_CLICK_INTERVAL.value) {
+                            val newValue = controlCommand.value.takeIf { it.isNotEmpty() }?.get(0)
+                            selectedPressSpeed = pressSpeedOptions[newValue] ?: pressSpeedOptions[0]
+                        }
+                    }
+                }
+            LaunchedEffect(Unit) {
+                aacpManager?.registerControlCommandListener(AACPManager.Companion.ControlCommandIdentifiers.DOUBLE_CLICK_INTERVAL, selectedPressSpeedListener)
+            }
+            DisposableEffect(Unit) {
+                onDispose {
+                    aacpManager?.unregisterControlCommandListener(AACPManager.Companion.ControlCommandIdentifiers.DOUBLE_CLICK_INTERVAL, selectedPressSpeedListener)
+                }
+            }
+
+            val pressAndHoldDurationOptions = mapOf(
+                0.toByte() to "Default",
+                1.toByte() to "Slower",
+                2.toByte() to "Slowest"
+            )
+            val selectedPressAndHoldDurationValue = aacpManager?.controlCommandStatusList?.find { it.identifier == AACPManager.Companion.ControlCommandIdentifiers.CLICK_HOLD_INTERVAL }?.value?.takeIf { it.isNotEmpty() }?.get(0)
+            var selectedPressAndHoldDuration by remember { mutableStateOf(pressAndHoldDurationOptions[selectedPressAndHoldDurationValue] ?: pressAndHoldDurationOptions[0]) }
+            val selectedPressAndHoldDurationListener = object : AACPManager.ControlCommandListener {
+                    override fun onControlCommandReceived(controlCommand: AACPManager.ControlCommand) {
+                        if (controlCommand.identifier == AACPManager.Companion.ControlCommandIdentifiers.CLICK_HOLD_INTERVAL.value) {
+                            val newValue = controlCommand.value.takeIf { it.isNotEmpty() }?.get(0)
+                            selectedPressAndHoldDuration = pressAndHoldDurationOptions[newValue] ?: pressAndHoldDurationOptions[0]
+                        }
+                    }
+                }
+            LaunchedEffect(Unit) {
+                aacpManager?.registerControlCommandListener(AACPManager.Companion.ControlCommandIdentifiers.CLICK_HOLD_INTERVAL, selectedPressAndHoldDurationListener)
+            }
+            DisposableEffect(Unit) {
+                onDispose {
+                    aacpManager?.unregisterControlCommandListener(AACPManager.Companion.ControlCommandIdentifiers.CLICK_HOLD_INTERVAL, selectedPressAndHoldDurationListener)
+                }
+            }
+
+            val volumeSwipeSpeedOptions = mapOf(
+                1.toByte() to "Default",
+                2.toByte() to "Longer",
+                3.toByte() to "Longest"
+            )
+            val selectedVolumeSwipeSpeedValue = aacpManager?.controlCommandStatusList?.find { it.identifier == AACPManager.Companion.ControlCommandIdentifiers.VOLUME_SWIPE_INTERVAL }?.value?.takeIf { it.isNotEmpty() }?.get(0)
+            var selectedVolumeSwipeSpeed by remember { mutableStateOf(volumeSwipeSpeedOptions[selectedVolumeSwipeSpeedValue] ?: volumeSwipeSpeedOptions[1]) }
+            val selectedVolumeSwipeSpeedListener = object : AACPManager.ControlCommandListener {
+                override fun onControlCommandReceived(controlCommand: AACPManager.ControlCommand) {
+                    if (controlCommand.identifier == AACPManager.Companion.ControlCommandIdentifiers.VOLUME_SWIPE_INTERVAL.value) {
+                        val newValue = controlCommand.value.takeIf { it.isNotEmpty() }?.get(0)
+                        selectedVolumeSwipeSpeed = volumeSwipeSpeedOptions[newValue] ?: volumeSwipeSpeedOptions[1]
+                    }
+                }
+            }
+            LaunchedEffect(Unit) {
+                aacpManager?.registerControlCommandListener(AACPManager.Companion.ControlCommandIdentifiers.VOLUME_SWIPE_INTERVAL, selectedVolumeSwipeSpeedListener)
+            }
+            DisposableEffect(Unit) {
+                onDispose {
+                    aacpManager?.unregisterControlCommandListener(AACPManager.Companion.ControlCommandIdentifiers.VOLUME_SWIPE_INTERVAL, selectedVolumeSwipeSpeedListener)
+                }
+            }
+
             LaunchedEffect(enabled.value, amplificationSliderValue.floatValue, balanceSliderValue.floatValue, toneSliderValue.floatValue, conversationBoostEnabled.value, ambientNoiseReductionSliderValue.floatValue, eq.value, initialLoadComplete.value, initialReadSucceeded.value) {
                 if (!initialLoadComplete.value) {
                     Log.d(TAG, "Initial device load not complete - skipping send")
@@ -239,8 +336,8 @@ fun AccessibilitySettingsScreen() {
                     enabled = enabled.value,
                     leftEQ = eq.value,
                     rightEQ = eq.value,
-                    leftAmplification = amplificationSliderValue.floatValue + (0.5f - balanceSliderValue.floatValue) * amplificationSliderValue.floatValue * 2,
-                    rightAmplification = amplificationSliderValue.floatValue + (balanceSliderValue.floatValue - 0.5f) * amplificationSliderValue.floatValue * 2,
+                    leftAmplification = amplificationSliderValue.floatValue + if (balanceSliderValue.floatValue < 0) -balanceSliderValue.floatValue else 0f,
+                    rightAmplification = amplificationSliderValue.floatValue + if (balanceSliderValue.floatValue > 0) balanceSliderValue.floatValue else 0f,
                     leftTone = toneSliderValue.floatValue,
                     rightTone = toneSliderValue.floatValue,
                     leftConversationBoost = conversationBoostEnabled.value,
@@ -254,6 +351,12 @@ fun AccessibilitySettingsScreen() {
                 sendTransparencySettings(attManager, transparencySettings.value)
             }
 
+            DisposableEffect(Unit) {
+                onDispose {
+                    attManager.unregisterListener(0x18, transparencyListener)
+                }
+            }
+
             LaunchedEffect(Unit) {
                 Log.d(TAG, "Connecting to ATT...")
                 try {
@@ -261,6 +364,10 @@ fun AccessibilitySettingsScreen() {
                     while (attManager.socket?.isConnected != true) {
                         delay(100)
                     }
+
+                    attManager.enableNotifications(0x18)
+                    attManager.registerListener(0x18, transparencyListener)
+
                     // If we have an AACP manager, prefer its EQ data to populate EQ controls first
                     try {
                         if (aacpManager != null) {
@@ -375,26 +482,26 @@ fun AccessibilitySettingsScreen() {
             ) {
                 AccessibilitySlider(
                     label = "Amplification",
-                    valueRange = 0f..1f,
+                    valueRange = -1f..1f,
                     value = amplificationSliderValue.floatValue,
                     onValueChange = {
-                        amplificationSliderValue.floatValue = it
+                        amplificationSliderValue.floatValue = snapIfClose(it, listOf(-0.5f, -0.25f, 0f, 0.25f, 0.5f))
                     },
                 )
                 AccessibilitySlider(
                     label = "Balance",
-                    valueRange = 0f..1f,
+                    valueRange = -1f..1f,
                     value = balanceSliderValue.floatValue,
                     onValueChange = {
-                        balanceSliderValue.floatValue = it
+                        balanceSliderValue.floatValue = snapIfClose(it, listOf(0f))
                     },
                 )
                 AccessibilitySlider(
                     label = "Tone",
-                    valueRange = 0f..1f,
+                    valueRange = -1f..1f,
                     value = toneSliderValue.floatValue,
                     onValueChange = {
-                        toneSliderValue.floatValue = it
+                        toneSliderValue.floatValue = snapIfClose(it, listOf(0f))
                     },
                 )
                 AccessibilitySlider(
@@ -402,7 +509,7 @@ fun AccessibilitySettingsScreen() {
                     valueRange = 0f..1f,
                     value = ambientNoiseReductionSliderValue.floatValue,
                     onValueChange = {
-                        ambientNoiseReductionSliderValue.floatValue = it
+                        ambientNoiseReductionSliderValue.floatValue = snapIfClose(it, listOf(0.1f, 0.3f, 0.5f, 0.7f, 0.9f))
                     },
                 )
                 AccessibilityToggle(
@@ -445,6 +552,46 @@ fun AccessibilitySettingsScreen() {
                 SinglePodANCSwitch()
                 VolumeControlSwitch()
                 LoudSoundReductionSwitch(attManager)
+
+                DropdownMenuComponent(
+                    label = "Press Speed",
+                    options = pressSpeedOptions.values.toList(),
+                    selectedOption = selectedPressSpeed.toString(),
+                    onOptionSelected = { newValue ->
+                        selectedPressSpeed = newValue
+                        aacpManager?.sendControlCommand(
+                            identifier = AACPManager.Companion.ControlCommandIdentifiers.DOUBLE_CLICK_INTERVAL.value,
+                            value = pressSpeedOptions.filterValues { it == newValue }.keys.firstOrNull() ?: 0.toByte()
+                        )
+                    },
+                    textColor = textColor
+                )
+                DropdownMenuComponent(
+                    label = "Press and Hold Duration",
+                    options = pressAndHoldDurationOptions.values.toList(),
+                    selectedOption = selectedPressAndHoldDuration.toString(),
+                    onOptionSelected = { newValue ->
+                        selectedPressAndHoldDuration = newValue
+                        aacpManager?.sendControlCommand(
+                            identifier = AACPManager.Companion.ControlCommandIdentifiers.CLICK_HOLD_INTERVAL.value,
+                            value = pressAndHoldDurationOptions.filterValues { it == newValue }.keys.firstOrNull() ?: 0.toByte()
+                        )
+                    },
+                    textColor = textColor
+                )
+                DropdownMenuComponent(
+                    label = "Volume Swipe Speed",
+                    options = volumeSwipeSpeedOptions.values.toList(),
+                    selectedOption = selectedVolumeSwipeSpeed.toString(),
+                    onOptionSelected = { newValue ->
+                        selectedVolumeSwipeSpeed = newValue
+                        aacpManager?.sendControlCommand(
+                            identifier = AACPManager.Companion.ControlCommandIdentifiers.VOLUME_SWIPE_INTERVAL.value,
+                            value = volumeSwipeSpeedOptions.filterValues { it == newValue }.keys.firstOrNull() ?: 1.toByte()
+                        )
+                    },
+                    textColor = textColor
+                )
             }
             Spacer(modifier = Modifier.height(2.dp))
 
@@ -515,13 +662,13 @@ fun AccessibilitySettingsScreen() {
                     color = textColor.copy(alpha = 0.6f),
                     fontFamily = FontFamily(Font(R.font.sf_pro))
                 ),
-                modifier = Modifier.padding(8.dp, bottom = 2.dp)
+                modifier = Modifier.padding(8.dp, bottom = 0.dp)
             )
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(backgroundColor, RoundedCornerShape(14.dp))
-                    .padding(top = 0.dp, bottom = 12.dp)
+                    .padding(vertical = 0.dp)
             ) {
                 val darkModeLocal = isSystemInDarkTheme()
 
@@ -666,7 +813,6 @@ fun AccessibilitySettingsScreen() {
                     }
                 }
             }
-            Spacer(modifier = Modifier.height(16.dp))
         }
     }
 }
@@ -816,13 +962,9 @@ private fun parseTransparencySettingsResponse(data: ByteArray): TransparencySett
     Log.d(TAG, "Settings parsed successfully")
 
     val avg = (leftAmplification + rightAmplification) / 2
-    val amplification = avg.coerceIn(0f, 1f)
+    val amplification = avg.coerceIn(-1f, 1f)
     val diff = rightAmplification - leftAmplification
-    val balance = if (avg == 0f) {
-        0.5f
-    } else {
-        (0.5f + diff / (2 * avg)).coerceIn(0f, 1f)
-    }
+    val balance = diff.coerceIn(-1f, 1f)
 
     return TransparencySettings(
         enabled = enabled > 0.5f,
@@ -899,6 +1041,64 @@ private fun sendPhoneMediaEQ(aacpManager: me.kavishdevar.librepods.utils.AACPMan
             aacpManager.sendPhoneMediaEQ(eq, phoneByte, mediaByte)
         } catch (e: Exception) {
             Log.w(TAG, "Error in sendPhoneMediaEQ: ${e.message}")
+        }
+    }
+}
+
+private fun snapIfClose(value: Float, points: List<Float>, threshold: Float = 0.05f): Float {
+    val nearest = points.minByOrNull { kotlin.math.abs(it - value) } ?: value
+    return if (kotlin.math.abs(nearest - value) <= threshold) nearest else value
+}
+
+@Composable
+fun DropdownMenuComponent(
+    label: String,
+    options: List<String>,
+    selectedOption: String,
+    onOptionSelected: (String) -> Unit,
+    textColor: Color
+) {
+    var expanded by remember { mutableStateOf(false) }
+
+    Column (
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 12.dp)
+    ) {
+        Text(
+            text = label,
+            style = TextStyle(
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Medium,
+                color = textColor
+            )
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { expanded = true }
+                .padding(8.dp)
+        ) {
+            Text(
+                text = selectedOption,
+                modifier = Modifier.padding(16.dp),
+            )
+        }
+
+        DropdownMenu(
+            expanded = expanded,
+            onDismissRequest = { expanded = false }
+        ) {
+            options.forEach { option ->
+                DropdownMenuItem(
+                    onClick = {
+                        onOptionSelected(option)
+                        expanded = false
+                    },
+                    text = { Text(text = option) }
+                )
+            }
         }
     }
 }

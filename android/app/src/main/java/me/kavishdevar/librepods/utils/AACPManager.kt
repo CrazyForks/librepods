@@ -272,6 +272,13 @@ class AACPManager {
         controlCommandListeners.getOrPut(identifier) { mutableListOf() }.add(callback)
     }
 
+    fun unregisterControlCommandListener(
+        identifier: ControlCommandIdentifiers,
+        callback: ControlCommandListener
+    ) {
+        controlCommandListeners[identifier]?.remove(callback)
+    }
+
     private var callback: PacketCallback? = null
 
     fun setPacketCallback(callback: PacketCallback) {
@@ -556,13 +563,6 @@ class AACPManager {
                 callback?.onUnknownPacketReceived(packet)
             }
         }
-    }
-
-    fun sendEqualizerData(eqData: FloatArray, eqOnPhone: Boolean, eqOnMedia: Boolean): Boolean {
-        if (eqData.size != 8) {
-            throw IllegalArgumentException("EQ data must be 8 floats")
-        }
-        return sendDataPacket(createEqualizerDataPacket(eqData, eqOnPhone, eqOnMedia))
     }
 
     fun createEqualizerDataPacket(eqData: FloatArray, eqOnPhone: Boolean, eqOnMedia: Boolean): ByteArray {
@@ -1120,6 +1120,9 @@ class AACPManager {
         val payload = buffer.array()
         val packet = header + payload
         sendPacket(packet)
+        this.eqData = eq.copyOf()
+        this.eqOnPhone = phone == 0x01.toByte()
+        this.eqOnMedia = media == 0x01.toByte()
     }
 
     fun parseAudioSourceResponse(data: ByteArray): Pair<String, AudioSourceType> {

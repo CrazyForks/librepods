@@ -34,6 +34,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -59,6 +61,22 @@ fun VolumeControlSwitch() {
         mutableStateOf(
             volumeControlEnabledValue == 1.toByte()
         )
+    }
+    val listener = object : AACPManager.ControlCommandListener {
+        override fun onControlCommandReceived(controlCommand: AACPManager.ControlCommand) {
+            if (controlCommand.identifier == AACPManager.Companion.ControlCommandIdentifiers.VOLUME_SWIPE_MODE.value) {
+                val newValue = controlCommand.value.takeIf { it.isNotEmpty() }?.get(0)
+                volumeControlEnabled = newValue == 1.toByte()
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        service.aacpManager.registerControlCommandListener(AACPManager.Companion.ControlCommandIdentifiers.VOLUME_SWIPE_MODE, listener)
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            service.aacpManager.unregisterControlCommandListener(AACPManager.Companion.ControlCommandIdentifiers.VOLUME_SWIPE_MODE, listener)
+        }
     }
     fun updateVolumeControlEnabled(enabled: Boolean) {
         volumeControlEnabled = enabled

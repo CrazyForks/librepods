@@ -92,7 +92,6 @@ import dev.chrisbanes.haze.materials.ExperimentalHazeMaterialsApi
 import kotlinx.coroutines.launch
 import me.kavishdevar.librepods.R
 import me.kavishdevar.librepods.CustomDevice
-import me.kavishdevar.librepods.composables.AccessibilitySettings
 import me.kavishdevar.librepods.composables.AudioSettings
 import me.kavishdevar.librepods.composables.BatteryView
 import me.kavishdevar.librepods.composables.IndependentToggle

@@ -34,7 +34,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -69,6 +71,30 @@ fun ConversationalAwarenessSwitch() {
             AACPManager.Companion.ControlCommandIdentifiers.CONVERSATION_DETECT_CONFIG.value,
             enabled
         )
+    }
+
+    val conversationalAwarenessListener = object: AACPManager.ControlCommandListener {
+        override fun onControlCommandReceived(controlCommand: AACPManager.ControlCommand) {
+            if (controlCommand.identifier == AACPManager.Companion.ControlCommandIdentifiers.CONVERSATION_DETECT_CONFIG.value) {
+                val newValue = controlCommand.value.takeIf { it.isNotEmpty() }?.get(0)
+                conversationalAwarenessEnabled = newValue == 1.toByte()
+            }
+        }
+    }
+    
+    LaunchedEffect(Unit) {
+        service.aacpManager.registerControlCommandListener(
+            AACPManager.Companion.ControlCommandIdentifiers.CONVERSATION_DETECT_CONFIG,
+            conversationalAwarenessListener
+        )
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            service.aacpManager.unregisterControlCommandListener(
+                AACPManager.Companion.ControlCommandIdentifiers.CONVERSATION_DETECT_CONFIG,
+                conversationalAwarenessListener
+            )
+        }
     }
 
     val isDarkTheme = isSystemInDarkTheme()

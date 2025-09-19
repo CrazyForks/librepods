@@ -37,6 +37,8 @@ import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -66,6 +68,24 @@ fun ToneVolumeSlider() {
     val sliderValue = remember { mutableFloatStateOf(
         sliderValueFromAACP?.toFloat() ?: -1f
     ) }
+    val listener = object : AACPManager.ControlCommandListener {
+        override fun onControlCommandReceived(controlCommand: AACPManager.ControlCommand) {
+            if (controlCommand.identifier == AACPManager.Companion.ControlCommandIdentifiers.CHIME_VOLUME.value) {
+                val newValue = controlCommand.value.takeIf { it.isNotEmpty() }?.get(0)?.toFloat()
+                if (newValue != null) {
+                    sliderValue.floatValue = newValue
+                }
+            }
+        }
+    }
+    LaunchedEffect(Unit) {
+        service.aacpManager.registerControlCommandListener(AACPManager.Companion.ControlCommandIdentifiers.CHIME_VOLUME, listener)
+    }
+    DisposableEffect(Unit) {
+        onDispose {
+            service.aacpManager.unregisterControlCommandListener(AACPManager.Companion.ControlCommandIdentifiers.CHIME_VOLUME, listener)
+        }
+    }
     Log.d("ToneVolumeSlider", "Slider value: ${sliderValue.floatValue}")
 
     val isDarkTheme = isSystemInDarkTheme()
@@ -94,11 +114,11 @@ fun ToneVolumeSlider() {
         Slider(
             value = sliderValue.floatValue,
             onValueChange = {
-                sliderValue.floatValue = it
+                sliderValue.floatValue = snapIfClose(it, listOf(100f))
             },
-            valueRange = 0f..100f,
+            valueRange = 0f..125f,
             onValueChangeFinished = {
-                sliderValue.floatValue = sliderValue.floatValue.roundToInt().toFloat()
+                sliderValue.floatValue = snapIfClose(sliderValue.floatValue.roundToInt().toFloat(), listOf(100f))
                 service.aacpManager.sendControlCommand(
                     identifier = AACPManager.Companion.ControlCommandIdentifiers.CHIME_VOLUME.value,
                     value = byteArrayOf(sliderValue.floatValue.toInt().toByte(),
@@ -162,4 +182,9 @@ fun ToneVolumeSlider() {
 @Composable
 fun ToneVolumeSliderPreview() {
     ToneVolumeSlider()
+}
+
+private fun snapIfClose(value: Float, points: List<Float>, threshold: Float = 0.05f): Float {
+    val nearest = points.minByOrNull { kotlin.math.abs(it - value) } ?: value
+    return if (kotlin.math.abs(nearest - value) <= threshold) nearest else value
 }

@@ -35,6 +35,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -63,6 +64,7 @@ fun LoudSoundReductionSwitch(attManager: ATTManager) {
         while (attManager.socket?.isConnected != true) {
             delay(100)
         }
+        attManager.enableNotifications(0x1b)
 
         var parsed = false
         for (attempt in 1..3) {
@@ -89,6 +91,29 @@ fun LoudSoundReductionSwitch(attManager: ATTManager) {
     LaunchedEffect(loudSoundReductionEnabled) {
         if (attManager.socket?.isConnected != true) return@LaunchedEffect
         attManager.write(0x1b, if (loudSoundReductionEnabled) byteArrayOf(1) else byteArrayOf(0))
+    }
+
+    val loudSoundListener = remember {
+        object : (ByteArray) -> Unit {
+            override fun invoke(value: ByteArray) {
+                if (value.isNotEmpty()) {
+                    loudSoundReductionEnabled = value[0].toInt() != 0
+                    Log.d("LoudSoundReduction", "Updated from notification: enabled=$loudSoundReductionEnabled")
+                } else {
+                    Log.w("LoudSoundReduction", "Empty value in notification")
+                }
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        attManager.registerListener(0x1b, loudSoundListener)
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            attManager.unregisterListener(0x1b, loudSoundListener)
+        }
     }
 
     val isDarkTheme = isSystemInDarkTheme()

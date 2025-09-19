@@ -38,6 +38,7 @@ import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
@@ -66,6 +67,31 @@ fun AdaptiveStrengthSlider() {
         sliderValueFromAACP?.toFloat()?.let { sliderValue.floatValue = (100 - it) }
     }
 
+    val listener = remember {
+        object : AACPManager.ControlCommandListener {
+            override fun onControlCommandReceived(controlCommand: AACPManager.ControlCommand) {
+                if (controlCommand.identifier == AACPManager.Companion.ControlCommandIdentifiers.AUTO_ANC_STRENGTH.value) {
+                    controlCommand.value.takeIf { it.isNotEmpty() }?.get(0)?.toFloat()?.let {
+                        sliderValue.floatValue = (100 - it)
+                    }
+                }
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        service.aacpManager.registerControlCommandListener(
+            AACPManager.Companion.ControlCommandIdentifiers.AUTO_ANC_STRENGTH,
+            listener
+        )
+        onDispose {
+            service.aacpManager.unregisterControlCommandListener(
+                AACPManager.Companion.ControlCommandIdentifiers.AUTO_ANC_STRENGTH,
+                listener
+            )
+        }
+    }
+
     val isDarkTheme = isSystemInDarkTheme()
 
     val trackColor = if (isDarkTheme) Color(0xFFB3B3B3) else Color(0xFFD9D9D9)
@@ -81,11 +107,11 @@ fun AdaptiveStrengthSlider() {
         Slider(
             value = sliderValue.floatValue,
             onValueChange = {
-                sliderValue.floatValue = it
+                sliderValue.floatValue = snapIfClose(it, listOf(0f, 50f, 100f))
             },
             valueRange = 0f..100f,
             onValueChangeFinished = {
-                sliderValue.floatValue = sliderValue.floatValue.roundToInt().toFloat()
+                sliderValue.floatValue = snapIfClose(sliderValue.floatValue.roundToInt().toFloat(), listOf(0f, 50f, 100f))
                 service.aacpManager.sendControlCommand(
                     identifier = AACPManager.Companion.ControlCommandIdentifiers.AUTO_ANC_STRENGTH.value,
                     value = (100 - sliderValue.floatValue).toInt()
@@ -155,4 +181,9 @@ fun AdaptiveStrengthSlider() {
 @Composable
 fun AdaptiveStrengthSliderPreview() {
     AdaptiveStrengthSlider()
+}
+
+private fun snapIfClose(value: Float, points: List<Float>, threshold: Float = 0.05f): Float {
+    val nearest = points.minByOrNull { kotlin.math.abs(it - value) } ?: value
+    return if (kotlin.math.abs(nearest - value) <= threshold) nearest else value
 }
