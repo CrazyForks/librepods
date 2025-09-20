@@ -97,6 +97,7 @@ import me.kavishdevar.librepods.composables.BatteryView
 import me.kavishdevar.librepods.composables.CallControlSettings
 import me.kavishdevar.librepods.composables.ConnectionSettings
 import me.kavishdevar.librepods.composables.IndependentToggle
+import me.kavishdevar.librepods.composables.MicrophoneSettings
 import me.kavishdevar.librepods.composables.NameField
 import me.kavishdevar.librepods.composables.NavigationButton
 import me.kavishdevar.librepods.composables.NoiseControlSettings
@@ -373,7 +374,8 @@ fun AirPodsSettingsScreen(dev: BluetoothDevice?, service: AirPodsService,
                     Spacer(modifier = Modifier.height(16.dp))
                     ConnectionSettings()
 
-                    // microphone settings
+                    Spacer(modifier = Modifier.height(16.dp))
+                    MicrophoneSettings()
 
                     Spacer(modifier = Modifier.height(16.dp))
                     IndependentToggle(

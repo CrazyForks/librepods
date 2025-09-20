@@ -111,7 +111,7 @@ fun PressAndHoldSettings(navController: NavController) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(55.dp)
+                .height(50.dp)
                 .background(animatedLeftBackgroundColor, RoundedCornerShape(topStart = 14.dp, topEnd = 14.dp))
                 .pointerInput(Unit) {
                     detectTapGestures(
@@ -135,7 +135,7 @@ fun PressAndHoldSettings(navController: NavController) {
                 Text(
                     text = stringResource(R.string.left),
                     style = TextStyle(
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         color = textColor,
                         fontFamily = FontFamily(Font(R.font.sf_pro))
                     ),
@@ -144,7 +144,7 @@ fun PressAndHoldSettings(navController: NavController) {
                 Text(
                     text = leftActionText,
                     style = TextStyle(
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         color = textColor.copy(alpha = 0.6f),
                         fontFamily = FontFamily(Font(R.font.sf_pro))
                     ),
@@ -171,7 +171,7 @@ fun PressAndHoldSettings(navController: NavController) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(55.dp)
+                .height(50.dp)
                 .background(animatedRightBackgroundColor, RoundedCornerShape(bottomEnd = 14.dp, bottomStart = 14.dp))
                 .pointerInput(Unit) {
                     detectTapGestures(
@@ -195,7 +195,7 @@ fun PressAndHoldSettings(navController: NavController) {
                 Text(
                     text = stringResource(R.string.right),
                     style = TextStyle(
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         color = textColor,
                         fontFamily = FontFamily(Font(R.font.sf_pro))
                     ),
@@ -204,7 +204,7 @@ fun PressAndHoldSettings(navController: NavController) {
                 Text(
                     text = rightActionText,
                     style = TextStyle(
-                        fontSize = 18.sp,
+                        fontSize = 16.sp,
                         color = textColor.copy(alpha = 0.6f),
                         fontFamily = FontFamily(Font(R.font.sf_pro))
                     ),

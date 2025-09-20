@@ -90,4 +90,14 @@
     <string name="sleep_detection">Pause media when falling asleep</string>
     <string name="off_listening_mode">Off Listening Mode</string>
     <string name="off_listening_mode_description">When this is on, AirPods listening modes will include an Off option. Loud sound levels are not reduced when the listening mode is set to Off.</string>
+    <string name="microphone">Microphone</string>
+    <string name="microphone_mode">Microphone Mode</string>
+    <string name="microphone_automatic">Automatic</string>
+    <string name="microphone_always_right">Always Right</string>
+    <string name="microphone_always_left">Always Left</string>
+    <string name="answer_call">Answer call</string>
+    <string name="mute_unmute">Mute/Unmute</string>
+    <string name="hang_up">Hang Up</string>
+    <string name="press_once">Press Once</string>
+    <string name="press_twice">Press Twice</string>
 </resources>

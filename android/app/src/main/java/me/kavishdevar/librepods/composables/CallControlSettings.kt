@@ -91,8 +91,8 @@ fun CallControlSettings() {
         }?.value ?: byteArrayOf(0x00, 0x03)
         
         var flipped by remember { mutableStateOf(callControlEnabledValue.contentEquals(byteArrayOf(0x00, 0x02))) }
-        var singlePressAction by remember { mutableStateOf(if (flipped) "Double Press" else "Single Press") }
-        var doublePressAction by remember { mutableStateOf(if (flipped) "Single Press" else "Double Press") }
+        var singlePressAction by remember { mutableStateOf(if (flipped) "Press Twice" else "Press Once") }
+        var doublePressAction by remember { mutableStateOf(if (flipped) "Press Once" else "Press Twice") }
         var showSinglePressDropdown by remember { mutableStateOf(false) }
         var showDoublePressDropdown by remember { mutableStateOf(false) }
 
@@ -103,8 +103,8 @@ fun CallControlSettings() {
                         AACPManager.Companion.ControlCommandIdentifiers.CALL_MANAGEMENT_CONFIG) {
                         val newFlipped = controlCommand.value.contentEquals(byteArrayOf(0x00, 0x02))
                         flipped = newFlipped
-                        singlePressAction = if (newFlipped) "Double Press" else "Single Press"
-                        doublePressAction = if (newFlipped) "Single Press" else "Double Press"
+                        singlePressAction = if (newFlipped) "Press Twice" else "Press Once"
+                        doublePressAction = if (newFlipped) "Press Once" else "Press Twice"
                         Log.d("CallControlSettings", "Control command received, flipped: $newFlipped")
                     }
                 }
@@ -134,19 +134,19 @@ fun CallControlSettings() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 12.dp, end = 12.dp)
-                    .height(55.dp),
+                    .height(50.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Answer call",
-                    fontSize = 18.sp,
+                    text = stringResource(R.string.answer_call),
+                    fontSize = 16.sp,
                     color = textColor,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
                 Text(
-                    text = "Single Press",
-                    fontSize = 18.sp,
+                    text = stringResource(R.string.press_once),
+                    fontSize = 16.sp,
                     color = textColor.copy(alpha = 0.6f)
                 )
             }
@@ -161,13 +161,13 @@ fun CallControlSettings() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 12.dp, end = 12.dp)
-                    .height(55.dp),
+                    .height(50.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Mute/Unmute",
-                    fontSize = 18.sp,
+                    text = stringResource(R.string.mute_unmute),
+                    fontSize = 16.sp,
                     color = textColor,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
@@ -177,8 +177,8 @@ fun CallControlSettings() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = singlePressAction,
-                            fontSize = 18.sp,
+                            text = if (singlePressAction == "Press Once") stringResource(R.string.press_once) else stringResource(R.string.press_twice),
+                            fontSize = 16.sp,
                             color = textColor.copy(alpha = 0.8f)
                         )
                         Icon(
@@ -193,19 +193,19 @@ fun CallControlSettings() {
                         onDismissRequest = { showSinglePressDropdown = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Single Press") },
+                            text = { Text(stringResource(R.string.press_once)) },
                             onClick = {
-                                singlePressAction = "Single Press"
-                                doublePressAction = "Double Press"
+                                singlePressAction = "Press Once"
+                                doublePressAction = "Press Twice"
                                 showSinglePressDropdown = false
                                 service.aacpManager.sendControlCommand(0x24, byteArrayOf(0x00, 0x03))
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Double Press") },
+                            text = { Text(stringResource(R.string.press_twice)) },
                             onClick = {
-                                singlePressAction = "Double Press"
-                                doublePressAction = "Single Press"
+                                singlePressAction = "Press Twice"
+                                doublePressAction = "Press Once"
                                 showSinglePressDropdown = false
                                 service.aacpManager.sendControlCommand(0x24, byteArrayOf(0x00, 0x02))
                             }
@@ -224,13 +224,13 @@ fun CallControlSettings() {
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(start = 12.dp, end = 12.dp)
-                    .height(55.dp),
+                    .height(50.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "Hang Up",
-                    fontSize = 18.sp,
+                    text = stringResource(R.string.hang_up),
+                    fontSize = 16.sp,
                     color = textColor,
                     modifier = Modifier.padding(bottom = 4.dp)
                 )
@@ -240,8 +240,8 @@ fun CallControlSettings() {
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Text(
-                            text = doublePressAction,
-                            fontSize = 18.sp,
+                            text = if (doublePressAction == "Press Once") stringResource(R.string.press_once) else stringResource(R.string.press_twice),
+                            fontSize = 16.sp,
                             color = textColor.copy(alpha = 0.8f)
                         )
                         Icon(
@@ -256,19 +256,19 @@ fun CallControlSettings() {
                         onDismissRequest = { showDoublePressDropdown = false }
                     ) {
                         DropdownMenuItem(
-                            text = { Text("Single Press") },
+                            text = { Text(stringResource(R.string.press_once)) },
                             onClick = {
-                                doublePressAction = "Single Press"
-                                singlePressAction = "Double Press"
+                                doublePressAction = "Press Once"
+                                singlePressAction = "Press Twice"
                                 showDoublePressDropdown = false
                                 service.aacpManager.sendControlCommand(0x24, byteArrayOf(0x00, 0x02))
                             }
                         )
                         DropdownMenuItem(
-                            text = { Text("Double Press") },
+                            text = { Text(stringResource(R.string.press_twice)) },
                             onClick = {
-                                doublePressAction = "Double Press"
-                                singlePressAction = "Single Press"
+                                doublePressAction = "Press Twice"
+                                singlePressAction = "Press Once"
                                 showDoublePressDropdown = false
                                 service.aacpManager.sendControlCommand(0x24, byteArrayOf(0x00, 0x03))
                             }
