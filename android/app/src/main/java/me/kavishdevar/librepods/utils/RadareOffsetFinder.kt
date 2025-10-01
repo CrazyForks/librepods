@@ -74,7 +74,7 @@ class RadareOffsetFinder(context: Context) {
         fun clearHookOffsets(): Boolean {
             try {
                 val process = Runtime.getRuntime().exec(arrayOf(
-                    "/system/bin/su", "-c",
+                    "su", "-c",
                     "/system/bin/setprop $HOOK_OFFSET_PROP '' && " +
                     "/system/bin/setprop $CFG_REQ_OFFSET_PROP '' && " +
                     "/system/bin/setprop $CSM_CONFIG_OFFSET_PROP '' && " +
@@ -98,7 +98,7 @@ class RadareOffsetFinder(context: Context) {
         fun clearSdpOffset(): Boolean {
             try {
                 val process = Runtime.getRuntime().exec(arrayOf(
-                    "/system/bin/su", "-c", "/system/bin/setprop $SDP_OFFSET_PROP ''"
+                    "su", "-c", "/system/bin/setprop $SDP_OFFSET_PROP ''"
                 ))
                 val exitCode = process.waitFor()
 
@@ -288,14 +288,14 @@ class RadareOffsetFinder(context: Context) {
             }
 
             Log.d(TAG, "Removing existing extract directory")
-            Runtime.getRuntime().exec(arrayOf("/system/bin/su", "-c", "rm -rf $EXTRACT_DIR/data/local/tmp/aln_unzip")).waitFor()
+            Runtime.getRuntime().exec(arrayOf("su", "-c", "rm -rf $EXTRACT_DIR/data/local/tmp/aln_unzip")).waitFor()
 
-            Runtime.getRuntime().exec(arrayOf("/system/bin/su", "-c", "mkdir -p $EXTRACT_DIR/data/local/tmp/aln_unzip")).waitFor()
+            Runtime.getRuntime().exec(arrayOf("su", "-c", "mkdir -p $EXTRACT_DIR/data/local/tmp/aln_unzip")).waitFor()
 
             Log.d(TAG, "Extracting ${radare2TarballFile.absolutePath} to $EXTRACT_DIR")
 
             val process = Runtime.getRuntime().exec(
-                arrayOf("/system/bin/su", "-c", "tar xvf ${radare2TarballFile.absolutePath} -C $EXTRACT_DIR")
+                arrayOf("su", "-c", "tar xvf ${radare2TarballFile.absolutePath} -C $EXTRACT_DIR")
             )
 
             val reader = BufferedReader(InputStreamReader(process.inputStream))
@@ -327,7 +327,7 @@ class RadareOffsetFinder(context: Context) {
     private suspend fun checkIfAlreadyExtracted(): Boolean = withContext(Dispatchers.IO) {
         try {
             val checkDirProcess = Runtime.getRuntime().exec(
-                arrayOf("/system/bin/su", "-c", "[ -d $EXTRACT_DIR/data/local/tmp/aln_unzip ] && echo 'exists'")
+                arrayOf("su", "-c", "[ -d $EXTRACT_DIR/data/local/tmp/aln_unzip ] && echo 'exists'")
             )
             val dirExists = BufferedReader(InputStreamReader(checkDirProcess.inputStream)).readLine() == "exists"
             checkDirProcess.waitFor()
@@ -338,7 +338,7 @@ class RadareOffsetFinder(context: Context) {
             }
 
             val tarProcess = Runtime.getRuntime().exec(
-                arrayOf("/system/bin/su", "-c", "tar tf ${radare2TarballFile.absolutePath}")
+                arrayOf("su", "-c", "tar tf ${radare2TarballFile.absolutePath}")
             )
             val tarFiles = BufferedReader(InputStreamReader(tarProcess.inputStream)).readLines()
                 .filter { it.isNotEmpty() }
@@ -352,7 +352,7 @@ class RadareOffsetFinder(context: Context) {
             }
 
             val findProcess = Runtime.getRuntime().exec(
-                arrayOf("/system/bin/su", "-c", "find $EXTRACT_DIR/data/local/tmp/aln_unzip -type f | sort")
+                arrayOf("su", "-c", "find $EXTRACT_DIR/data/local/tmp/aln_unzip -type f | sort")
             )
             val extractedFiles = BufferedReader(InputStreamReader(findProcess.inputStream)).readLines()
                 .filter { it.isNotEmpty() }
@@ -370,14 +370,14 @@ class RadareOffsetFinder(context: Context) {
 
                 val filePathInExtractDir = "$EXTRACT_DIR/$tarFile"
                 val fileCheckProcess = Runtime.getRuntime().exec(
-                    arrayOf("/system/bin/su", "-c", "[ -f $filePathInExtractDir ] && echo 'exists'")
+                    arrayOf("su", "-c", "[ -f $filePathInExtractDir ] && echo 'exists'")
                 )
                 val fileExists = BufferedReader(InputStreamReader(fileCheckProcess.inputStream)).readLine() == "exists"
                 fileCheckProcess.waitFor()
 
                 if (!fileExists) {
                     Log.d(TAG, "File $filePathInExtractDir from tarball missing in extract directory")
-                    Runtime.getRuntime().exec(arrayOf("/system/bin/su", "-c", "rm -rf $EXTRACT_DIR/data/local/tmp/aln_unzip")).waitFor()
+                    Runtime.getRuntime().exec(arrayOf("su", "-c", "rm -rf $EXTRACT_DIR/data/local/tmp/aln_unzip")).waitFor()
                     return@withContext false
                 }
             }
@@ -394,13 +394,13 @@ class RadareOffsetFinder(context: Context) {
         try {
             Log.d(TAG, "Making binaries executable in $RADARE2_BIN_PATH")
             val chmod1Result = Runtime.getRuntime().exec(
-                arrayOf("/system/bin/su", "-c", "chmod -R 755 $RADARE2_BIN_PATH")
+                arrayOf("su", "-c", "chmod -R 755 $RADARE2_BIN_PATH")
             ).waitFor()
 
             Log.d(TAG, "Making binaries executable in $BUSYBOX_PATH")
 
             val chmod2Result = Runtime.getRuntime().exec(
-                arrayOf("/system/bin/su", "-c", "chmod -R 755 $BUSYBOX_PATH")
+                arrayOf("su", "-c", "chmod -R 755 $BUSYBOX_PATH")
             ).waitFor()
 
             if (chmod1Result == 0 && chmod2Result == 0) {
@@ -421,8 +421,8 @@ class RadareOffsetFinder(context: Context) {
         var offset = 0L
 
         try {
-            @Suppress("LocalVariableName") val currentLD_LIBRARY_PATH = ProcessBuilder().command("/system/bin/su", "-c", "printenv LD_LIBRARY_PATH").start().inputStream.bufferedReader().readText().trim()
-            val currentPATH = ProcessBuilder().command("/system/bin/su", "-c", "printenv PATH").start().inputStream.bufferedReader().readText().trim()
+            @Suppress("LocalVariableName") val currentLD_LIBRARY_PATH = ProcessBuilder().command("su", "-c", "printenv LD_LIBRARY_PATH").start().inputStream.bufferedReader().readText().trim()
+            val currentPATH = ProcessBuilder().command("su", "-c", "printenv PATH").start().inputStream.bufferedReader().readText().trim()
             val envSetup = """
                 export LD_LIBRARY_PATH="$RADARE2_LIB_PATH:$currentLD_LIBRARY_PATH"
                 export PATH="$BUSYBOX_PATH:$RADARE2_BIN_PATH:$currentPATH"
@@ -431,7 +431,7 @@ class RadareOffsetFinder(context: Context) {
             val command = "$envSetup && $RADARE2_BIN_PATH/rabin2 -q -E $libraryPath | grep fcr_chk_chan"
             Log.d(TAG, "Running command: $command")
 
-            val process = Runtime.getRuntime().exec(arrayOf("/system/bin/su", "-c", command))
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
 
             val reader = BufferedReader(InputStreamReader(process.inputStream))
             val errorReader = BufferedReader(InputStreamReader(process.errorStream))
@@ -484,7 +484,7 @@ class RadareOffsetFinder(context: Context) {
             val command = "$envSetup && $RADARE2_BIN_PATH/rabin2 -q -E $libraryPath | grep l2cu_process_our_cfg_req"
             Log.d(TAG, "Running command: $command")
 
-            val process = Runtime.getRuntime().exec(arrayOf("/system/bin/su", "-c", command))
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
             val reader = BufferedReader(InputStreamReader(process.inputStream))
             val errorReader = BufferedReader(InputStreamReader(process.errorStream))
 
@@ -515,7 +515,7 @@ class RadareOffsetFinder(context: Context) {
             if (offset > 0L) {
                 val hexString = "0x${offset.toString(16)}"
                 Runtime.getRuntime().exec(arrayOf(
-                    "/system/bin/su", "-c", "/system/bin/setprop $CFG_REQ_OFFSET_PROP $hexString"
+                    "su", "-c", "/system/bin/setprop $CFG_REQ_OFFSET_PROP $hexString"
                 )).waitFor()
                 Log.d(TAG, "Saved l2cu_process_our_cfg_req offset: $hexString")
             }
@@ -529,7 +529,7 @@ class RadareOffsetFinder(context: Context) {
             val command = "$envSetup && $RADARE2_BIN_PATH/rabin2 -q -E $libraryPath | grep l2c_csm_config"
             Log.d(TAG, "Running command: $command")
 
-            val process = Runtime.getRuntime().exec(arrayOf("/system/bin/su", "-c", command))
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
             val reader = BufferedReader(InputStreamReader(process.inputStream))
             val errorReader = BufferedReader(InputStreamReader(process.errorStream))
 
@@ -560,7 +560,7 @@ class RadareOffsetFinder(context: Context) {
             if (offset > 0L) {
                 val hexString = "0x${offset.toString(16)}"
                 Runtime.getRuntime().exec(arrayOf(
-                    "/system/bin/su", "-c", "/system/bin/setprop $CSM_CONFIG_OFFSET_PROP $hexString"
+                    "su", "-c", "/system/bin/setprop $CSM_CONFIG_OFFSET_PROP $hexString"
                 )).waitFor()
                 Log.d(TAG, "Saved l2c_csm_config offset: $hexString")
             }
@@ -574,7 +574,7 @@ class RadareOffsetFinder(context: Context) {
             val command = "$envSetup && $RADARE2_BIN_PATH/rabin2 -q -E $libraryPath | grep l2cu_send_peer_info_req"
             Log.d(TAG, "Running command: $command")
 
-            val process = Runtime.getRuntime().exec(arrayOf("/system/bin/su", "-c", command))
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
             val reader = BufferedReader(InputStreamReader(process.inputStream))
             val errorReader = BufferedReader(InputStreamReader(process.errorStream))
 
@@ -605,7 +605,7 @@ class RadareOffsetFinder(context: Context) {
             if (offset > 0L) {
                 val hexString = "0x${offset.toString(16)}"
                 Runtime.getRuntime().exec(arrayOf(
-                    "/system/bin/su", "-c", "/system/bin/setprop $PEER_INFO_REQ_OFFSET_PROP $hexString"
+                    "su", "-c", "/system/bin/setprop $PEER_INFO_REQ_OFFSET_PROP $hexString"
                 )).waitFor()
                 Log.d(TAG, "Saved l2cu_send_peer_info_req offset: $hexString")
             }
@@ -619,7 +619,7 @@ class RadareOffsetFinder(context: Context) {
             val command = "$envSetup && $RADARE2_BIN_PATH/rabin2 -q -E $libraryPath | grep DmSetLocalDiRecord"
             Log.d(TAG, "Running command: $command")
 
-            val process = Runtime.getRuntime().exec(arrayOf("/system/bin/su", "-c", command))
+            val process = Runtime.getRuntime().exec(arrayOf("su", "-c", command))
             val reader = BufferedReader(InputStreamReader(process.inputStream))
             val errorReader = BufferedReader(InputStreamReader(process.errorStream))
 
@@ -650,7 +650,7 @@ class RadareOffsetFinder(context: Context) {
             if (offset > 0L) {
                 val hexString = "0x${offset.toString(16)}"
                 Runtime.getRuntime().exec(arrayOf(
-                    "/system/bin/su", "-c", "/system/bin/setprop $SDP_OFFSET_PROP $hexString"
+                    "su", "-c", "/system/bin/setprop $SDP_OFFSET_PROP $hexString"
                 )).waitFor()
                 Log.d(TAG, "Saved DmSetLocalDiRecord offset: $hexString")
             }
@@ -665,7 +665,7 @@ class RadareOffsetFinder(context: Context) {
             Log.d(TAG, "Saving offset to system property: $hexString")
 
             val process = Runtime.getRuntime().exec(arrayOf(
-                "/system/bin/su", "-c", "/system/bin/setprop $HOOK_OFFSET_PROP $hexString"
+                "su", "-c", "/system/bin/setprop $HOOK_OFFSET_PROP $hexString"
             ))
 
             val exitCode = process.waitFor()
@@ -694,7 +694,7 @@ class RadareOffsetFinder(context: Context) {
 
     private fun cleanupExtractedFiles() {
         try {
-            Runtime.getRuntime().exec(arrayOf("/system/bin/su", "-c", "rm -rf $EXTRACT_DIR/data/local/tmp/aln_unzip")).waitFor()
+            Runtime.getRuntime().exec(arrayOf("su", "-c", "rm -rf $EXTRACT_DIR/data/local/tmp/aln_unzip")).waitFor()
             Log.d(TAG, "Cleaned up extracted files at $EXTRACT_DIR/data/local/tmp/aln_unzip")
         } catch (e: Exception) {
             Log.e(TAG, "Failed to cleanup extracted files", e)
@@ -732,8 +732,8 @@ class RadareOffsetFinder(context: Context) {
                 return@withContext false
             }
 
-            @Suppress("LocalVariableName") val currentLD_LIBRARY_PATH = ProcessBuilder().command("/system/bin/su", "-c", "printenv LD_LIBRARY_PATH").start().inputStream.bufferedReader().readText().trim()
-            val currentPATH = ProcessBuilder().command("/system/bin/su", "-c", "printenv PATH").start().inputStream.bufferedReader().readText().trim()
+            @Suppress("LocalVariableName") val currentLD_LIBRARY_PATH = ProcessBuilder().command("su", "-c", "printenv LD_LIBRARY_PATH").start().inputStream.bufferedReader().readText().trim()
+            val currentPATH = ProcessBuilder().command("su", "-c", "printenv PATH").start().inputStream.bufferedReader().readText().trim()
             val envSetup = """
                 export LD_LIBRARY_PATH="$RADARE2_LIB_PATH:$currentLD_LIBRARY_PATH"
                 export PATH="$BUSYBOX_PATH:$RADARE2_BIN_PATH:$currentPATH"

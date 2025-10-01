@@ -349,7 +349,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
         sharedPreferences.registerOnSharedPreferenceChangeListener(this)
 
-        val process = Runtime.getRuntime().exec(arrayOf("/system/bin/su", "-c", "settings", "get", "secure", "bluetooth_address"))
+        val process = Runtime.getRuntime().exec(arrayOf("su", "-c", "settings", "get", "secure", "bluetooth_address"))
         val output = process.inputStream.bufferedReader().use { it.readLine() }
         localMac = output.trim()
 
@@ -954,7 +954,7 @@ class AirPodsService : Service(), SharedPreferences.OnSharedPreferenceChangeList
 
                 Log.d("AirPodsParser", "Stem press received: $stemPressType on $bud, cameraActive: $cameraActive, cameraAction: ${config.cameraAction}")
                 if (cameraActive && config.cameraAction != null && stemPressType == config.cameraAction) {
-                    Runtime.getRuntime().exec(arrayOf("/system/bin/su", "-c", "input keyevent 27"))
+                    Runtime.getRuntime().exec(arrayOf("su", "-c", "input keyevent 27"))
                 } else {
                     val action = getActionFor(bud, stemPressType)
                     Log.d("AirPodsParser", "$bud $stemPressType action: $action")

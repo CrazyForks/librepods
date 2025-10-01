@@ -201,7 +201,7 @@ class LogCollector(private val context: Context) {
     private suspend fun executeRootCommand(command: String): String {
         return withContext(Dispatchers.IO) {
             try {
-                val process = Runtime.getRuntime().exec("/system/bin/su -c $command")
+                val process = Runtime.getRuntime().exec("su -c $command")
                 val reader = BufferedReader(InputStreamReader(process.inputStream))
                 val output = StringBuilder()
                 var line: String?
